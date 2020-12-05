@@ -327,7 +327,7 @@ class GMAN(nn.Module):
         K = args.K
         d = args.d
         D = K * d
-        self.num_his = ags.num_his
+        self.num_his = args.num_his
         self.SE = SE
         self.STEmbedding = STEmbedding(D, bn_decay)
         self.STAttBlock_1 = nn.ModuleList([STAttBlock(K, d, bn_decay) for _ in range(L)])
