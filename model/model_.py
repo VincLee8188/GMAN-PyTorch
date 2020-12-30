@@ -280,9 +280,9 @@ class transformAttention(nn.Module):
     def forward(self, X, STE_his, STE_pred):
         batch_size = X.shape[0]
         # [batch_size, num_step, num_vertex, K * d]
-        query = self.FC(STE_pred)
-        key = self.FC(STE_his)
-        value = self.FC(X)
+        query = self.FC_q(STE_pred)
+        key = self.FC_k(STE_his)
+        value = self.FC_v(X)
         # [K * batch_size, num_step, num_vertex, d]
         query = torch.cat(torch.split(query, self.K, dim=-1), dim=0)
         key = torch.cat(torch.split(key, self.K, dim=-1), dim=0)
