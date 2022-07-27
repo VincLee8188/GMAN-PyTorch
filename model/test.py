@@ -5,7 +5,9 @@ import numpy as np
 from utils.utils_ import log_string, metric
 from utils.utils_ import load_data
 
-def test(args, log):
+
+
+def test(args, log, device):
     (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE,
      testY, SE, mean, std) = load_data(args)
     num_train, _, num_vertex = trainX.shape
@@ -15,7 +17,24 @@ def test(args, log):
     val_num_batch = math.ceil(num_val / args.batch_size)
     test_num_batch = math.ceil(num_test / args.batch_size)
 
+    # GPU Util
+    trainX = trainX.to(device)
+    trainTE = trainTE.to(device)
+    trainY = trainY.to(device)
+    valX = valX.to(device)
+    valTE = valTE.to(device)
+    valY = valY.to(device)
+    testX = testX.to(device)
+    testTE = testTE.to(device)
+    testY = testY.to(device)
+    SE = SE.to(device)
+    mean = mean.to(device)
+    std = std.to(device)
+
     model = torch.load(args.model_file)
+    #GPU util
+    model.to(device)
+    
 
     # test model
     log_string(log, '**** testing model ****')
@@ -30,8 +49,8 @@ def test(args, log):
         for batch_idx in range(train_num_batch):
             start_idx = batch_idx * args.batch_size
             end_idx = min(num_train, (batch_idx + 1) * args.batch_size)
-            X = trainX[start_idx: end_idx]
-            TE = trainTE[start_idx: end_idx]
+            X = trainX[start_idx: end_idx].to(device)
+            TE = trainTE[start_idx: end_idx].to(device)
             pred_batch = model(X, TE)
             trainPred.append(pred_batch.detach().clone())
             del X, TE, pred_batch
@@ -42,8 +61,8 @@ def test(args, log):
         for batch_idx in range(val_num_batch):
             start_idx = batch_idx * args.batch_size
             end_idx = min(num_val, (batch_idx + 1) * args.batch_size)
-            X = valX[start_idx: end_idx]
-            TE = valTE[start_idx: end_idx]
+            X = valX[start_idx: end_idx].to(device)
+            TE = valTE[start_idx: end_idx].to(device)
             pred_batch = model(X, TE)
             valPred.append(pred_batch.detach().clone())
             del X, TE, pred_batch
@@ -55,8 +74,8 @@ def test(args, log):
         for batch_idx in range(test_num_batch):
             start_idx = batch_idx * args.batch_size
             end_idx = min(num_test, (batch_idx + 1) * args.batch_size)
-            X = testX[start_idx: end_idx]
-            TE = testTE[start_idx: end_idx]
+            X = testX[start_idx: end_idx].to(device)
+            TE = testTE[start_idx: end_idx].to(device)
             pred_batch = model(X, TE)
             testPred.append(pred_batch.detach().clone())
             del X, TE, pred_batch

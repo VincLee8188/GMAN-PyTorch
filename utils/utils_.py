@@ -75,7 +75,7 @@ def load_data(args):
     time = pd.DatetimeIndex(df.index)
     dayofweek = torch.reshape(torch.tensor(time.weekday), (-1, 1))
     timeofday = (time.hour * 3600 + time.minute * 60 + time.second) \
-                // time.freq.delta.total_seconds()
+                // args.time_slot*60 #time.freq.delta.total_seconds()
     timeofday = torch.reshape(torch.tensor(timeofday), (-1, 1))
     time = torch.cat((dayofweek, timeofday), -1)
     # train/val/test

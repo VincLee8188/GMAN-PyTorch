@@ -4,11 +4,27 @@ from utils.utils_ import log_string
 from model.model_ import *
 from utils.utils_ import load_data
 
-
-def train(model, args, log, loss_criterion, optimizer, scheduler):
+def train(model, args, log, loss_criterion, optimizer, scheduler,device):
 
     (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE,
      testY, SE, mean, std) = load_data(args)
+
+    # GPU Util
+    #trainX = trainX.to(device)
+    #trainTE = trainTE.to(device)
+    #trainY = trainY.to(device)
+    #valX = valX.to(device)
+    #valTE = valTE.to(device)
+    #valY = valY.to(device)
+    #testX = testX.to(device)
+    #testTE = testTE.to(device)
+    #testY = testY.to(device)
+    #SE = SE.to(device)
+    #mean = mean.to(device)
+    #std = std.to(device)
+
+    #GPU util
+    model.to(device)
 
     num_train, _, num_vertex = trainX.shape
     log_string(log, '**** training model ****')
@@ -39,9 +55,9 @@ def train(model, args, log, loss_criterion, optimizer, scheduler):
         for batch_idx in range(train_num_batch):
             start_idx = batch_idx * args.batch_size
             end_idx = min(num_train, (batch_idx + 1) * args.batch_size)
-            X = trainX[start_idx: end_idx]
-            TE = trainTE[start_idx: end_idx]
-            label = trainY[start_idx: end_idx]
+            X = trainX[start_idx: end_idx].to(device)
+            TE = trainTE[start_idx: end_idx].to(device)
+            label = trainY[start_idx: end_idx].to(device)
             optimizer.zero_grad()
             pred = model(X, TE)
             pred = pred * std + mean
@@ -66,9 +82,9 @@ def train(model, args, log, loss_criterion, optimizer, scheduler):
             for batch_idx in range(val_num_batch):
                 start_idx = batch_idx * args.batch_size
                 end_idx = min(num_val, (batch_idx + 1) * args.batch_size)
-                X = valX[start_idx: end_idx]
-                TE = valTE[start_idx: end_idx]
-                label = valY[start_idx: end_idx]
+                X = valX[start_idx: end_idx].to(device)
+                TE = valTE[start_idx: end_idx].to(device)
+                label = valY[start_idx: end_idx].to(device)
                 pred = model(X, TE)
                 pred = pred * std + mean
                 loss_batch = loss_criterion(pred, label)

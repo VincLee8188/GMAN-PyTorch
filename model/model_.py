@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class conv2d_(nn.Module):
     def __init__(self, input_dims, output_dims, kernel_size, stride=(1, 1),
@@ -24,6 +25,7 @@ class conv2d_(nn.Module):
 
 
     def forward(self, x):
+        x = x.to(device)
         x = x.permute(0, 3, 2, 1)
         x = F.pad(x, ([self.padding_size[1], self.padding_size[1], self.padding_size[0], self.padding_size[0]]))
         x = self.conv(x)
@@ -52,6 +54,7 @@ class FC(nn.Module):
             zip(input_dims, units, activations)])
 
     def forward(self, x):
+        x = x.to(device)
         for conv in self.convs:
             x = conv(x)
         return x
@@ -79,9 +82,12 @@ class STEmbedding(nn.Module):
 
     def forward(self, SE, TE, T=288):
         # spatial embedding
+        SE = SE.to(device)
         SE = SE.unsqueeze(0).unsqueeze(0)
         SE = self.FC_se(SE)
+        
         # temporal embedding
+        TE = TE.to(device)
         dayofweek = torch.empty(TE.shape[0], TE.shape[1], 7)
         timeofday = torch.empty(TE.shape[0], TE.shape[1], T)
         for i in range(TE.shape[0]):
@@ -120,6 +126,8 @@ class spatialAttention(nn.Module):
                      bn_decay=bn_decay)
 
     def forward(self, X, STE):
+        X = X.to(device)
+        STE = STE.to(device)
         batch_size = X.shape[0]
         X = torch.cat((X, STE), dim=-1)
         # [batch_size, num_step, num_vertex, K * d]
@@ -168,6 +176,8 @@ class temporalAttention(nn.Module):
                      bn_decay=bn_decay)
 
     def forward(self, X, STE):
+        X = X.to(device)
+        STE = STE.to(device)
         batch_size_ = X.shape[0]
         X = torch.cat((X, STE), dim=-1)
         # [batch_size, num_step, num_vertex, K * d]
@@ -228,6 +238,9 @@ class gatedFusion(nn.Module):
                        bn_decay=bn_decay)
 
     def forward(self, HS, HT):
+        HS = HS.to(device)
+        HT = HT.to(device)
+
         XS = self.FC_xs(HS)
         XT = self.FC_xt(HT)
         z = torch.sigmoid(torch.add(XS, XT))
@@ -245,6 +258,8 @@ class STAttBlock(nn.Module):
         self.gatedFusion = gatedFusion(K * d, bn_decay)
 
     def forward(self, X, STE):
+        X = X.to(device)
+        STE = STE.to(device)
         HS = self.spatialAttention(X, STE)
         HT = self.temporalAttention(X, STE)
         H = self.gatedFusion(HS, HT)
@@ -278,6 +293,9 @@ class transformAttention(nn.Module):
                      bn_decay=bn_decay)
 
     def forward(self, X, STE_his, STE_pred):
+        X = X.to(device)
+        STE_his = STE_his.to(device)
+        STE_pred = STE_pred.to(device)
         batch_size = X.shape[0]
         # [batch_size, num_step, num_vertex, K * d]
         query = self.FC_q(STE_pred)
@@ -328,7 +346,7 @@ class GMAN(nn.Module):
         d = args.d
         D = K * d
         self.num_his = args.num_his
-        self.SE = SE
+        self.SE = SE.to(device)
         self.STEmbedding = STEmbedding(D, bn_decay)
         self.STAttBlock_1 = nn.ModuleList([STAttBlock(K, d, bn_decay) for _ in range(L)])
         self.STAttBlock_2 = nn.ModuleList([STAttBlock(K, d, bn_decay) for _ in range(L)])
@@ -339,7 +357,8 @@ class GMAN(nn.Module):
                        bn_decay=bn_decay)
 
     def forward(self, X, TE):
-
+        X = X.to(device)
+        TE = TE.to(device)
         # input
         X = torch.unsqueeze(X, -1)
         X = self.FC_1(X)

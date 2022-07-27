@@ -5,6 +5,7 @@ import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 from utils.utils_ import log_string, plot_train_val_loss
 from utils.utils_ import count_parameters, load_data
@@ -54,6 +55,11 @@ args = parser.parse_args()
 log = open(args.log_file, 'w')
 log_string(log, str(args)[10: -1])
 T = 24 * 60 // args.time_slot  # Number of time steps in one day
+
+#modified for GPU utilization
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
 # load data
 log_string(log, 'loading data...')
 (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE,
@@ -79,9 +85,9 @@ log_string(log, 'trainable parameters: {:,}'.format(parameters))
 
 if __name__ == '__main__':
     start = time.time()
-    loss_train, loss_val = train(model, args, log, loss_criterion, optimizer, scheduler)
+    loss_train, loss_val = train(model, args, log, loss_criterion, optimizer, scheduler, device)
     plot_train_val_loss(loss_train, loss_val, 'figure/train_val_loss.png')
-    trainPred, valPred, testPred = test(args, log)
+    trainPred, valPred, testPred = test(args, log, device)
     end = time.time()
     log_string(log, 'total time: %.1fmin' % ((end - start) / 60))
     log.close()
