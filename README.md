@@ -1,7 +1,7 @@
 # PyTorch implementation of GMAN: A Graph Multi-Attention Network for Traffic Prediction
 
 # Important Note
-In the original version of this repository the code was only utilizing CPU resulting in longer training times. This version is utilizes GPU and results in shorter learning times.
+In the original version of this repository the code was only utilizing CPU resulting in longer training times. This version is utilizing GPU and results in shorter learning times.
 
 You can use the following command for training:
 
