@@ -1,6 +1,7 @@
 
 import argparse
 import time
+from typing_extensions import Self
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
@@ -86,23 +87,27 @@ log_string(log, 'trainable parameters: {:,}'.format(parameters))
 if __name__ == '__main__':
     start = time.time()
     loss_train, loss_val = train(model, args, log, loss_criterion, optimizer, scheduler, device)
+    loss_val = [validation.detach().cpu().numpy() for validation in loss_val]
     plot_train_val_loss(loss_train, loss_val, 'figure/train_val_loss.png')
     trainPred, valPred, testPred = test(args, log, device)
     end = time.time()
     log_string(log, 'total time: %.1fmin' % ((end - start) / 60))
     log.close()
-    trainPred_ = trainPred.numpy().reshape(-1, trainY.shape[-1])
-    trainY_ = trainY.numpy().reshape(-1, trainY.shape[-1])
-    valPred_ = valPred.numpy().reshape(-1, valY.shape[-1])
-    valY_ = valY.numpy().reshape(-1, valY.shape[-1])
-    testPred_ = testPred.numpy().reshape(-1, testY.shape[-1])
-    testY_ = testY.numpy().reshape(-1, testY.shape[-1])
+
+    trainPred_ = trainPred.reshape(-1, trainY.shape[-1])
+    trainY_ = trainY.reshape(-1, trainY.shape[-1])
+    valPred_ = valPred.reshape(-1, valY.shape[-1])
+    valY_ = valY.reshape(-1, valY.shape[-1])
+    testPred_ = testPred.reshape(-1, testY.shape[-1])
+    testY_ = testY.reshape(-1, testY.shape[-1])
 
     # Save training, validation and testing datas to disk
     l = [trainPred_, trainY_, valPred_, valY_, testPred_, testY_]
+
+    print("Saving predictions...")
     name = ['trainPred', 'trainY', 'valPred', 'valY', 'testPred', 'testY']
     for i, data in enumerate(l):
-        np.savetxt('./figure/' + name[i] + '.txt', data, fmt='%s')
+        np.savetxt('./figure/' + name[i] + '.txt', data.detach().cpu().numpy(), fmt='%s')
         
     # Plot the test prediction vs target（optional)
     plt.figure(figsize=(10, 280))

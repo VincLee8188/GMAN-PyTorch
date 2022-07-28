@@ -28,8 +28,8 @@ def test(args, log, device):
     testTE = testTE.to(device)
     testY = testY.to(device)
     SE = SE.to(device)
-    mean = mean.to(device)
-    std = std.to(device)
+    #mean = mean.to(device)
+    #std = std.to(device)
 
     model = torch.load(args.model_file)
     #GPU util
@@ -54,7 +54,8 @@ def test(args, log, device):
             pred_batch = model(X, TE)
             trainPred.append(pred_batch.detach().clone())
             del X, TE, pred_batch
-        trainPred = torch.from_numpy(np.concatenate(trainPred, axis=0))
+        trainPred = [tp.detach().cpu().numpy() for tp in trainPred]
+        trainPred = torch.from_numpy(np.concatenate(trainPred, axis=0)).to(device)
         trainPred = trainPred * std + mean
 
         valPred = []
@@ -66,7 +67,8 @@ def test(args, log, device):
             pred_batch = model(X, TE)
             valPred.append(pred_batch.detach().clone())
             del X, TE, pred_batch
-        valPred = torch.from_numpy(np.concatenate(valPred, axis=0))
+        valPred = [vp.detach().cpu().numpy() for vp in valPred]
+        valPred = torch.from_numpy(np.concatenate(valPred, axis=0)).to(device)
         valPred = valPred * std + mean
 
         testPred = []
@@ -79,7 +81,8 @@ def test(args, log, device):
             pred_batch = model(X, TE)
             testPred.append(pred_batch.detach().clone())
             del X, TE, pred_batch
-        testPred = torch.from_numpy(np.concatenate(testPred, axis=0))
+        testPred = [tp.detach().cpu().numpy() for tp in testPred]
+        testPred = torch.from_numpy(np.concatenate(testPred, axis=0)).to(device)
         testPred = testPred* std + mean
     end_test = time.time()
     train_mae, train_rmse, train_mape = metric(trainPred, trainY)
@@ -95,6 +98,7 @@ def test(args, log, device):
                (test_mae, test_rmse, test_mape * 100))
     log_string(log, 'performance in each prediction step')
     MAE, RMSE, MAPE = [], [], []
+    
     for step in range(args.num_pred):
         mae, rmse, mape = metric(testPred[:, step], testY[:, step])
         MAE.append(mae)
@@ -102,9 +106,9 @@ def test(args, log, device):
         MAPE.append(mape)
         log_string(log, 'step: %02d         %.2f\t\t%.2f\t\t%.2f%%' %
                    (step + 1, mae, rmse, mape * 100))
-    average_mae = np.mean(MAE)
-    average_rmse = np.mean(RMSE)
-    average_mape = np.mean(MAPE)
+    average_mae = torch.mean(torch.stack(MAE))
+    average_rmse = torch.mean(torch.stack(RMSE))
+    average_mape = torch.mean(torch.stack(MAPE))
     log_string(
         log, 'average:         %.2f\t\t%.2f\t\t%.2f%%' %
              (average_mae, average_rmse, average_mape * 100))

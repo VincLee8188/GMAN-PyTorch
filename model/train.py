@@ -68,7 +68,7 @@ def train(model, args, log, loss_criterion, optimizer, scheduler,device):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             if (batch_idx+1) % 5 == 0:
-                print(f'Training batch: {batch_idx+1} in epoch:{epoch}, training batch loss:{loss_batch:.4f}')
+                print(f'Training batch: {batch_idx+1}/{train_num_batch} in epoch:{epoch}, training batch loss:{loss_batch:.4f}')
             del X, TE, label, pred, loss_batch
         train_loss /= num_train
         train_total_loss.append(train_loss)
