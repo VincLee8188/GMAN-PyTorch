@@ -110,17 +110,17 @@ if __name__ == '__main__':
         np.savetxt('./figure/' + name[i] + '.txt', data.detach().cpu().numpy(), fmt='%s')
         
     # Plot the test prediction vs target（optional)
-    plt.figure(figsize=(10, 280))
-    for k in range(325):
-        plt.subplot(325, 1, k + 1)
-        for j in range(len(testPred_)):
-            c, d = [], []
-            for i in range(12):
-                print("testPred:",testPred.shape,testPred)
-                print("testY:",testY.shape,testY)
-                c.append(testPred_[j, i, k])
-                d.append(testY_[j, i, k])
-            plt.plot(range(1 + j, 12 + 1 + j), c, c='b')
-            plt.plot(range(1 + j, 12 + 1 + j), d, c='r')
-    plt.title('Test prediction vs Target')
-    plt.savefig('./figure/test_results.png')
+    #plt.figure(figsize=(10, 280))
+    #for k in range(325):
+    #    plt.subplot(325, 1, k + 1)
+    #    for j in range(len(testPred_)):
+    #        c, d = [], []
+    #        for i in range(12):
+    #            print("testPred:",testPred.shape,testPred)
+    #            print("testY:",testY.shape,testY)
+    #            c.append(testPred_[j, i, k])
+    #            d.append(testY_[j, i, k])
+    #        plt.plot(range(1 + j, 12 + 1 + j), c, c='b')
+    #        plt.plot(range(1 + j, 12 + 1 + j), d, c='r')
+    #plt.title('Test prediction vs Target')
+    #plt.savefig('./figure/test_results.png')
