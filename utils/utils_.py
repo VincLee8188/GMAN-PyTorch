@@ -47,9 +47,10 @@ def load_data(args):
     train_steps = round(args.train_ratio * num_step)
     test_steps = round(args.test_ratio * num_step)
     val_steps = num_step - train_steps - test_steps
-    train = traffic[: train_steps//10]
-    val = traffic[train_steps//10: (train_steps + val_steps)//10]
-    test = traffic[-test_steps//10:]
+    # Change these for adjusting data size
+    train = traffic[: train_steps]
+    val = traffic[train_steps: train_steps + val_steps]
+    test = traffic[-test_steps:]
     # X, Y
     trainX, trainY = seq2instance(train, args.num_his, args.num_pred)
     valX, valY = seq2instance(val, args.num_his, args.num_pred)

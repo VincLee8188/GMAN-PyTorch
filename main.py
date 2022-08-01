@@ -34,7 +34,7 @@ parser.add_argument('--val_ratio', type=float, default=0.1,
                     help='validation set [default : 0.1]')
 parser.add_argument('--test_ratio', type=float, default=0.2,
                     help='testing set [default : 0.2]')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=8, # 32
                     help='batch size')
 parser.add_argument('--max_epoch', type=int, default=1,
                     help='epoch to run')
@@ -113,11 +113,13 @@ if __name__ == '__main__':
     plt.figure(figsize=(10, 280))
     for k in range(325):
         plt.subplot(325, 1, k + 1)
-        for j in range(len(testPred)):
+        for j in range(len(testPred_)):
             c, d = [], []
             for i in range(12):
-                c.append(testPred[j, i, k])
-                d.append(testY[j, i, k])
+                print("testPred:",testPred.shape,testPred)
+                print("testY:",testY.shape,testY)
+                c.append(testPred_[j, i, k])
+                d.append(testY_[j, i, k])
             plt.plot(range(1 + j, 12 + 1 + j), c, c='b')
             plt.plot(range(1 + j, 12 + 1 + j), d, c='r')
     plt.title('Test prediction vs Target')
