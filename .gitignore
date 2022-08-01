@@ -1,0 +1,8 @@
+data/GMAN.pkl
+data/log
+data/pems-bay.h5
+data/visualize_data.ipynb
+error_handling.ipynb
+figure/
+train.sh
+*/__pycache__
