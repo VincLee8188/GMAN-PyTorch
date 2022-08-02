@@ -3,6 +3,8 @@ import datetime
 from utils.utils_ import log_string
 from model.model_ import *
 from utils.utils_ import load_data
+from utils.utils_ import metric
+import numpy as np
 
 def train(model, args, log, loss_criterion, optimizer, scheduler,device):
 
@@ -78,6 +80,7 @@ def train(model, args, log, loss_criterion, optimizer, scheduler,device):
         start_val = time.time()
         val_loss = 0
         model.eval()
+        valPred = []
         with torch.no_grad():
             for batch_idx in range(val_num_batch):
                 start_idx = batch_idx * args.batch_size
@@ -89,17 +92,23 @@ def train(model, args, log, loss_criterion, optimizer, scheduler,device):
                 pred = pred * std + mean
                 loss_batch = loss_criterion(pred, label)
                 val_loss += loss_batch * (end_idx - start_idx)
+                valPred.append(pred.detach().clone())
                 del X, TE, label, pred, loss_batch
         val_loss /= num_val
         val_total_loss.append(val_loss)
+        valPred = [vp.detach().cpu().numpy() for vp in valPred]
+        valPred = torch.from_numpy(np.concatenate(valPred, axis=0)).to(device)
+        valPred = valPred * std + mean
+        val_mae, val_rmse, val_mape = metric(valPred, valY)
         end_val = time.time()
+        
         log_string(
             log,
             '%s | epoch: %04d/%d, training time: %.1fs, inference time: %.1fs' %
             (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), epoch + 1,
              args.max_epoch, end_train - start_train, end_val - start_val))
         log_string(
-            log, f'train loss: {train_loss:.4f}, val_loss: {val_loss:.4f}')
+            log, f'train loss: {train_loss:.4f}, val_loss: {val_loss:.4f}, mae: {val_mae:.4f}, rmse: {val_rmse:.4f}, mape: {val_mape:.4f}')
         if val_loss <= val_loss_min:
             log_string(
                 log,
@@ -114,4 +123,4 @@ def train(model, args, log, loss_criterion, optimizer, scheduler,device):
     model.load_state_dict(best_model_wts)
     torch.save(model, args.model_file)
     log_string(log, f'Training and validation are completed, and model has been stored as {args.model_file}')
-    return train_total_loss, val_total_loss
+    return train_total_loss, val_total_loss, val_mae, val_rmse, val_mape

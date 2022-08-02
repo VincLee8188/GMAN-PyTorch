@@ -7,6 +7,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import wandb
 
 from utils.utils_ import log_string, plot_train_val_loss
 from utils.utils_ import count_parameters, load_data
@@ -60,6 +61,9 @@ T = 24 * 60 // args.time_slot  # Number of time steps in one day
 #modified for GPU utilization
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+# Wandb
+wandb.init(project="gman", entity="muratbayrktr")
+wandb.config.update(args)
 
 # load data
 log_string(log, 'loading data...')
@@ -86,8 +90,15 @@ log_string(log, 'trainable parameters: {:,}'.format(parameters))
 
 if __name__ == '__main__':
     start = time.time()
-    loss_train, loss_val = train(model, args, log, loss_criterion, optimizer, scheduler, device)
+    loss_train, loss_val, val_mae, val_rmse, val_mape = train(model, args, log, loss_criterion, optimizer, scheduler, device)
     loss_val = [validation.detach().cpu().numpy() for validation in loss_val]
+    wandb.log({
+        "loss_train": loss_train,
+        "loss_val": loss_val,
+        "val_mae": val_mae, 
+        "val_rmse": val_rmse, 
+        "val_mape": val_mape
+        })
     plot_train_val_loss(loss_train, loss_val, 'figure/train_val_loss.png')
     trainPred, valPred, testPred = test(args, log, device)
     end = time.time()
