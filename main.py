@@ -1,10 +1,13 @@
 
 import argparse
 import time
+from typing_extensions import Self
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+import wandb
 
 from utils.utils_ import log_string, plot_train_val_loss
 from utils.utils_ import count_parameters, load_data
@@ -32,7 +35,7 @@ parser.add_argument('--val_ratio', type=float, default=0.1,
                     help='validation set [default : 0.1]')
 parser.add_argument('--test_ratio', type=float, default=0.2,
                     help='testing set [default : 0.2]')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=8, # 32
                     help='batch size')
 parser.add_argument('--max_epoch', type=int, default=1,
                     help='epoch to run')
@@ -54,6 +57,14 @@ args = parser.parse_args()
 log = open(args.log_file, 'w')
 log_string(log, str(args)[10: -1])
 T = 24 * 60 // args.time_slot  # Number of time steps in one day
+
+#modified for GPU utilization
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# Wandb
+wandb.init(project="gman", entity="muratbayrktr")
+wandb.config.update(args)
+
 # load data
 log_string(log, 'loading data...')
 (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE,
@@ -79,35 +90,48 @@ log_string(log, 'trainable parameters: {:,}'.format(parameters))
 
 if __name__ == '__main__':
     start = time.time()
-    loss_train, loss_val = train(model, args, log, loss_criterion, optimizer, scheduler)
+    loss_train, loss_val, val_mae, val_rmse, val_mape = train(model, args, log, loss_criterion, optimizer, scheduler, device)
+    loss_val = [validation.detach().cpu().numpy() for validation in loss_val]
+    wandb.log({
+        "loss_train": loss_train,
+        "loss_val": loss_val,
+        "val_mae": val_mae, 
+        "val_rmse": val_rmse, 
+        "val_mape": val_mape
+        })
     plot_train_val_loss(loss_train, loss_val, 'figure/train_val_loss.png')
-    trainPred, valPred, testPred = test(args, log)
+    trainPred, valPred, testPred = test(args, log, device)
     end = time.time()
     log_string(log, 'total time: %.1fmin' % ((end - start) / 60))
     log.close()
-    trainPred_ = trainPred.numpy().reshape(-1, trainY.shape[-1])
-    trainY_ = trainY.numpy().reshape(-1, trainY.shape[-1])
-    valPred_ = valPred.numpy().reshape(-1, valY.shape[-1])
-    valY_ = valY.numpy().reshape(-1, valY.shape[-1])
-    testPred_ = testPred.numpy().reshape(-1, testY.shape[-1])
-    testY_ = testY.numpy().reshape(-1, testY.shape[-1])
+
+    trainPred_ = trainPred.reshape(-1, trainY.shape[-1])
+    trainY_ = trainY.reshape(-1, trainY.shape[-1])
+    valPred_ = valPred.reshape(-1, valY.shape[-1])
+    valY_ = valY.reshape(-1, valY.shape[-1])
+    testPred_ = testPred.reshape(-1, testY.shape[-1])
+    testY_ = testY.reshape(-1, testY.shape[-1])
 
     # Save training, validation and testing datas to disk
     l = [trainPred_, trainY_, valPred_, valY_, testPred_, testY_]
+
+    print("Saving predictions...")
     name = ['trainPred', 'trainY', 'valPred', 'valY', 'testPred', 'testY']
     for i, data in enumerate(l):
-        np.savetxt('./figure/' + name[i] + '.txt', data, fmt='%s')
+        np.savetxt('./figure/' + name[i] + '.txt', data.detach().cpu().numpy(), fmt='%s')
         
     # Plot the test prediction vs target（optional)
-    plt.figure(figsize=(10, 280))
-    for k in range(325):
-        plt.subplot(325, 1, k + 1)
-        for j in range(len(testPred)):
-            c, d = [], []
-            for i in range(12):
-                c.append(testPred[j, i, k])
-                d.append(testY[j, i, k])
-            plt.plot(range(1 + j, 12 + 1 + j), c, c='b')
-            plt.plot(range(1 + j, 12 + 1 + j), d, c='r')
-    plt.title('Test prediction vs Target')
-    plt.savefig('./figure/test_results.png')
+    #plt.figure(figsize=(10, 280))
+    #for k in range(325):
+    #    plt.subplot(325, 1, k + 1)
+    #    for j in range(len(testPred_)):
+    #        c, d = [], []
+    #        for i in range(12):
+    #            print("testPred:",testPred.shape,testPred)
+    #            print("testY:",testY.shape,testY)
+    #            c.append(testPred_[j, i, k])
+    #            d.append(testY_[j, i, k])
+    #        plt.plot(range(1 + j, 12 + 1 + j), c, c='b')
+    #        plt.plot(range(1 + j, 12 + 1 + j), d, c='r')
+    #plt.title('Test prediction vs Target')
+    #plt.savefig('./figure/test_results.png')

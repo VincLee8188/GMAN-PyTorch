@@ -3,12 +3,30 @@ import datetime
 from utils.utils_ import log_string
 from model.model_ import *
 from utils.utils_ import load_data
+from utils.utils_ import metric
+import numpy as np
 
-
-def train(model, args, log, loss_criterion, optimizer, scheduler):
+def train(model, args, log, loss_criterion, optimizer, scheduler,device):
 
     (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE,
      testY, SE, mean, std) = load_data(args)
+
+    # GPU Util
+    #trainX = trainX.to(device)
+    #trainTE = trainTE.to(device)
+    #trainY = trainY.to(device)
+    #valX = valX.to(device)
+    #valTE = valTE.to(device)
+    #valY = valY.to(device)
+    #testX = testX.to(device)
+    #testTE = testTE.to(device)
+    #testY = testY.to(device)
+    #SE = SE.to(device)
+    #mean = mean.to(device)
+    #std = std.to(device)
+
+    #GPU util
+    model.to(device)
 
     num_train, _, num_vertex = trainX.shape
     log_string(log, '**** training model ****')
@@ -39,9 +57,9 @@ def train(model, args, log, loss_criterion, optimizer, scheduler):
         for batch_idx in range(train_num_batch):
             start_idx = batch_idx * args.batch_size
             end_idx = min(num_train, (batch_idx + 1) * args.batch_size)
-            X = trainX[start_idx: end_idx]
-            TE = trainTE[start_idx: end_idx]
-            label = trainY[start_idx: end_idx]
+            X = trainX[start_idx: end_idx].to(device)
+            TE = trainTE[start_idx: end_idx].to(device)
+            label = trainY[start_idx: end_idx].to(device)
             optimizer.zero_grad()
             pred = model(X, TE)
             pred = pred * std + mean
@@ -52,7 +70,7 @@ def train(model, args, log, loss_criterion, optimizer, scheduler):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             if (batch_idx+1) % 5 == 0:
-                print(f'Training batch: {batch_idx+1} in epoch:{epoch}, training batch loss:{loss_batch:.4f}')
+                print(f'Training batch: {batch_idx+1}/{train_num_batch} in epoch:{epoch}, training batch loss:{loss_batch:.4f}')
             del X, TE, label, pred, loss_batch
         train_loss /= num_train
         train_total_loss.append(train_loss)
@@ -62,28 +80,35 @@ def train(model, args, log, loss_criterion, optimizer, scheduler):
         start_val = time.time()
         val_loss = 0
         model.eval()
+        valPred = []
         with torch.no_grad():
             for batch_idx in range(val_num_batch):
                 start_idx = batch_idx * args.batch_size
                 end_idx = min(num_val, (batch_idx + 1) * args.batch_size)
-                X = valX[start_idx: end_idx]
-                TE = valTE[start_idx: end_idx]
-                label = valY[start_idx: end_idx]
+                X = valX[start_idx: end_idx].to(device)
+                TE = valTE[start_idx: end_idx].to(device)
+                label = valY[start_idx: end_idx].to(device)
                 pred = model(X, TE)
                 pred = pred * std + mean
                 loss_batch = loss_criterion(pred, label)
                 val_loss += loss_batch * (end_idx - start_idx)
+                valPred.append(pred.detach().clone())
                 del X, TE, label, pred, loss_batch
         val_loss /= num_val
         val_total_loss.append(val_loss)
+        valPred = [vp.detach().cpu().numpy() for vp in valPred]
+        valPred = torch.from_numpy(np.concatenate(valPred, axis=0)).to(device)
+        valPred = valPred * std + mean
+        val_mae, val_rmse, val_mape = metric(valPred, valY)
         end_val = time.time()
+        
         log_string(
             log,
             '%s | epoch: %04d/%d, training time: %.1fs, inference time: %.1fs' %
             (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), epoch + 1,
              args.max_epoch, end_train - start_train, end_val - start_val))
         log_string(
-            log, f'train loss: {train_loss:.4f}, val_loss: {val_loss:.4f}')
+            log, f'train loss: {train_loss:.4f}, val_loss: {val_loss:.4f}, mae: {val_mae:.4f}, rmse: {val_rmse:.4f}, mape: {val_mape:.4f}')
         if val_loss <= val_loss_min:
             log_string(
                 log,
@@ -98,4 +123,4 @@ def train(model, args, log, loss_criterion, optimizer, scheduler):
     model.load_state_dict(best_model_wts)
     torch.save(model, args.model_file)
     log_string(log, f'Training and validation are completed, and model has been stored as {args.model_file}')
-    return train_total_loss, val_total_loss
+    return train_total_loss, val_total_loss, val_mae, val_rmse, val_mape
